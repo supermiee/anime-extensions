@@ -13,6 +13,7 @@ import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
 import java.net.URLEncoder
 
 class Azanimex : ParsedAnimeHttpSource() {
@@ -139,16 +140,14 @@ class Azanimex : ParsedAnimeHttpSource() {
     // =========================== Anime Details ===========================
     override fun animeDetailsParse(document: Document): SAnime {
         return SAnime.create().apply {
-            title = document.select("span.post-info:contains(Título) + br").first()?.previousSibling()?.toString()?.trim() ?: ""
-
             val infoMap = document.select("span.post-info").associate { span ->
                 val label = span.text().trim()
                 val value = span.nextSibling()?.toString()?.trim() ?: ""
                 label to value
             }
 
+            title = Parser.unescapeEntities(document.select("span.post-info:contains(Título) + br").first()?.previousSibling()?.toString()?.trim().orEmpty(), false)
             description = document.select("div.su-spoiler-content").first()?.text()?.trim() ?: ""
-
             genre = infoMap["Géneros"]?.substringBefore(".")
             author = infoMap["Estudio"]
             status = when (infoMap["Episodios"]?.substringAfter("de ")?.trim()) {
