@@ -7,14 +7,21 @@ import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.ParsedAnimeHttpSource
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.util.asJsoup
+import extensions.utils.parseAs
 import kotlinx.serialization.json.Json
+import okhttp3.Headers
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
-import java.net.URLEncoder
+import uy.kohesive.injekt.injectLazy
+import kotlin.getValue
 
 class Azanimex : ParsedAnimeHttpSource() {
 
@@ -25,6 +32,8 @@ class Azanimex : ParsedAnimeHttpSource() {
     override val lang = "es"
 
     override val supportsLatest = false
+
+    private val json: Json by injectLazy()
 
     // ============================== Popular ===============================
     override fun popularAnimeRequest(page: Int): Request {
@@ -55,70 +64,91 @@ class Azanimex : ParsedAnimeHttpSource() {
     override fun episodeListSelector() = throw UnsupportedOperationException()
     override fun episodeFromElement(element: Element) = throw UnsupportedOperationException()
 
-    private fun getPathFromUrl(url: String): String {
-        val cleanUrl = url.replace("https://", "").replace("http://", "")
-        return cleanUrl.substringAfter("/").replace("//", "/").replaceFirst("es/", "")
-    }
-
     override fun episodeListParse(response: Response): List<SEpisode> {
         val document = response.asJsoup()
 
+        // For other domains, maybe try Universal
         val mainUrl = document.select("a.su-button[href*='.az-animex.com']").firstOrNull()
             ?.attr("href") ?: throw Exception("No se encontró la URL de los episodios")
 
         val updatedUrl = updateDomainInUrl(mainUrl)
 
-        val path = getPathFromUrl(updatedUrl)
+        val path = updatedUrl.toHttpUrl().pathSegments.joinToString("/", prefix = "/")
 
-        val url1 = updatedUrl.substringAfter("https://").substringBefore("/")
+        val apiUrl = "https://directorio.az-animex.com/api/fs/list"
 
-        val apiUrl = "https://$url1/api?path=$path"
-
-        val apiResponse = client.newCall(
-            GET(apiUrl, headers = headers),
-        ).execute()
-
-        return try {
-            val json = Json { ignoreUnknownKeys = true }
-            val responseBody = apiResponse.body.string()
-            val result = json.decodeFromString<OneDriveResponse>(responseBody)
-
-            val episodes = mutableListOf<SEpisode>()
-
-            result.file?.let { file ->
-                if (file.name.endsWith(".mp4")) {
-                    val episode = SEpisode.create().apply {
-                        val animeurl = "https://$url1/api/raw/?path=$path"
-                        name = file.name.substringAfter("] ").substringBeforeLast(" [")
-                        episode_number = parseEpisodeNumber(file.name)
-                        Log.d("Azanimex", "URL del anime: $animeurl")
-
-                        url = animeurl
+        val jsonBody = """
+                    {
+                        "path": "$path",
+                        "password": "",
+                        "page": 1,
+                        "per_page": 30,
+                        "refresh": false
                     }
-                    episodes.add(episode)
-                }
+        """.trimIndent().toRequestBody("application/json".toMediaType())
+
+        val postHeaders = Headers.headersOf(
+            "Content-Type",
+            "application/json",
+            "X-Requested-With",
+            "XMLHttpRequest",
+        )
+        val folders = client.newCall(
+            POST(apiUrl, headers = postHeaders, body = jsonBody),
+        ).execute().parseAs<DirectorioResponse>()
+
+        return folders.data.content.map {
+            SEpisode.create().apply {
+                name = it.name
+                url = it.path
+//                date_upload = it.created
             }
-
-            result.folder?.value?.forEach { file ->
-                if (file.name.endsWith(".mp4")) {
-                    val episode = SEpisode.create().apply {
-                        val fileUrl = URLEncoder.encode(file.name, "UTF-8")
-                        val animeurl = "https://$url1/api/raw/?path=$path/$fileUrl"
-
-                        // Ajuste para extraer correctamente el nombre del episodio
-                        name = file.name.substringAfter("] ").substringBeforeLast(" [")
-                        episode_number = parseEpisodeNumber(file.name)
-                        Log.d("Azanimex", "URL del anime: $animeurl")
-
-                        url = animeurl
-                    }
-                    episodes.add(episode)
-                }
-            }
-            episodes.sortedByDescending { it.name }
-        } catch (e: Exception) {
-            throw Exception("Error al procesar los episodios: ${e.message}, Respuesta JSON: ")
         }
+//        val parsed = json.decodeFromString<PostResponse>(
+//            response.body.string(),
+//        )
+//
+//        return try {
+//            val json = Json { ignoreUnknownKeys = true }
+//            val responseBody = apiResponse.body.string()
+//            val result = json.decodeFromString<OneDriveResponse>(responseBody)
+//
+//            val episodes = mutableListOf<SEpisode>()
+//
+//            result.file?.let { file ->
+//                if (file.name.endsWith(".mp4")) {
+//                    val episode = SEpisode.create().apply {
+//                        val animeurl = "https://$url1/api/raw/?path=$path"
+//                        name = file.name.substringAfter("] ").substringBeforeLast(" [")
+//                        episode_number = parseEpisodeNumber(file.name)
+//                        Log.d("Azanimex", "URL del anime: $animeurl")
+//
+//                        url = animeurl
+//                    }
+//                    episodes.add(episode)
+//                }
+//            }
+//
+//            result.folder?.value?.forEach { file ->
+//                if (file.name.endsWith(".mp4")) {
+//                    val episode = SEpisode.create().apply {
+//                        val fileUrl = URLEncoder.encode(file.name, "UTF-8")
+//                        val animeurl = "https://$url1/api/raw/?path=$path/$fileUrl"
+//
+//                        // Ajuste para extraer correctamente el nombre del episodio
+//                        name = file.name.substringAfter("] ").substringBeforeLast(" [")
+//                        episode_number = parseEpisodeNumber(file.name)
+//                        Log.d("Azanimex", "URL del anime: $animeurl")
+//
+//                        url = animeurl
+//                    }
+//                    episodes.add(episode)
+//                }
+//            }
+//            episodes.sortedByDescending { it.name }
+//        } catch (e: Exception) {
+//            throw Exception("Error al procesar los episodios: ${e.message}, Respuesta JSON: ")
+//        }
     }
 
     private fun parseEpisodeNumber(filename: String): Float {
