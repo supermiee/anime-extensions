@@ -39,7 +39,7 @@ class Azanimex : ParsedAnimeHttpSource() {
             title =
                 element.selectFirst("h2.wp-block-post-title a")?.text()?.substringBefore("[") ?: ""
             thumbnail_url =
-                element.selectFirst("figure.wp-block-post-featured-image img")?.attr("data-src")
+                element.selectFirst("figure.wp-block-post-featured-image img")?.getImageUrl()
 
             val genres = mutableListOf<String>()
             element.select("div[class*=taxonomy-genero] a").forEach { genres.add(it.text()) }
@@ -52,11 +52,8 @@ class Azanimex : ParsedAnimeHttpSource() {
     override fun popularAnimeNextPageSelector(): String = "a.page-numbers:not(.prev):not(.next)"
 
     // ============================== Episodes ==============================
-    override fun episodeListSelector() = throw Exception("Not used")
-
-    override fun episodeFromElement(element: Element): SEpisode {
-        throw Exception("Not used")
-    }
+    override fun episodeListSelector() = throw UnsupportedOperationException()
+    override fun episodeFromElement(element: Element) = throw UnsupportedOperationException()
 
     private fun getPathFromUrl(url: String): String {
         val cleanUrl = url.replace("https://", "").replace("http://", "")
@@ -147,7 +144,7 @@ class Azanimex : ParsedAnimeHttpSource() {
             }
 
             title = Parser.unescapeEntities(document.select("span.post-info:contains(Título) + br").first()?.previousSibling()?.toString()?.trim().orEmpty(), false)
-            description = document.select("div.su-spoiler-content").first()?.text()?.trim() ?: ""
+            description = document.select("div.su-spoiler-content").first()?.text()?.trim()
             genre = infoMap["Géneros"]?.substringBefore(".")
             author = infoMap["Estudio"]
             status = when (infoMap["Episodios"]?.substringAfter("de ")?.trim()) {
@@ -218,22 +215,23 @@ class Azanimex : ParsedAnimeHttpSource() {
         return listOf(video)
     }
 
+    /**
+     * Tries to get the image url via various possible attributes.
+     */
+    private fun Element.getImageUrl(): String? {
+        return when {
+            hasAttr("data-src") -> attr("abs:data-src")
+            hasAttr("data-lazy-src") -> attr("abs:data-lazy-src")
+            hasAttr("srcset") -> attr("abs:srcset").substringBefore(" ")
+            else -> attr("abs:src")
+        }
+    }
+
     // =============================== Latest ===============================
-    override fun latestUpdatesRequest(page: Int): Request {
-        throw UnsupportedOperationException()
-    }
-
-    override fun latestUpdatesSelector(): String {
-        throw UnsupportedOperationException()
-    }
-
-    override fun latestUpdatesFromElement(element: Element): SAnime {
-        throw UnsupportedOperationException()
-    }
-
-    override fun latestUpdatesNextPageSelector(): String? {
-        throw UnsupportedOperationException()
-    }
+    override fun latestUpdatesRequest(page: Int) = throw UnsupportedOperationException()
+    override fun latestUpdatesSelector() = throw UnsupportedOperationException()
+    override fun latestUpdatesFromElement(element: Element) = throw UnsupportedOperationException()
+    override fun latestUpdatesNextPageSelector() = throw UnsupportedOperationException()
 
     companion object {
         const val PREFIX_SEARCH = "id:"
