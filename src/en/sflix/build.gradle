@@ -2,7 +2,6 @@ ext {
     extName = 'SFlix'
     extClass = '.SFlix'
     themePkg = 'dopeflix'
-    baseUrl = 'https://sflix.to'
     overrideVersionCode = 17
 }
 

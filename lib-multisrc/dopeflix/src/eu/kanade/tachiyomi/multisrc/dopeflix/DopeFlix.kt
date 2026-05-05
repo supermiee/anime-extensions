@@ -36,7 +36,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import kotlin.time.Duration.Companion.hours
 
-abstract class DopeFlix(
+open class DopeFlix(
     override val name: String,
     override val lang: String,
     private val megaCloudApi: String,
@@ -49,9 +49,10 @@ abstract class DopeFlix(
         "AKCloud",
     ),
     private val preferredHoster: String = hosterNames.first(),
-    override val supportsLatest: Boolean = true,
 ) : ParsedAnimeHttpSource(),
     ConfigurableAnimeSource {
+
+    override val supportsLatest: Boolean = true
 
     protected open val preferences by getPreferencesLazy {
         clearOldPrefs()
