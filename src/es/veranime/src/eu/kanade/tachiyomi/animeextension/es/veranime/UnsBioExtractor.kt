@@ -58,51 +58,46 @@ class UnsBioExtractor(private val client: OkHttpClient, private val headers: Hea
 
         if (strings.size < 500) return emptyList()
 
-        // Unshuffle the array dynamically
-        val arr = ArrayList(strings)
-        var unshuffled: List<String>? = null
-
-        fun parseInt(s: String): Int? {
-            val match = integerRegex.find(s)
-            return match?.value?.trim()?.toIntOrNull()
+        // Parse leading integers once and simulate left-rotation using modular indexing.
+        val parsedInts = strings.map { s ->
+            integerRegex.find(s)?.value?.trim()?.toIntOrNull()
         }
 
-        loop@ for (step in 0 until arr.size) {
-            runCatching {
-                val p189 = parseInt(arr[189 - 136])
-                val p635 = parseInt(arr[635 - 136])
-                val p236 = parseInt(arr[236 - 136])
-                val p233 = parseInt(arr[233 - 136])
-                val p325 = parseInt(arr[325 - 136])
-                val p370 = parseInt(arr[370 - 136])
-                val p446 = parseInt(arr[446 - 136])
-                val p489 = parseInt(arr[489 - 136])
-                val p349 = parseInt(arr[349 - 136])
-                val p166 = parseInt(arr[166 - 136])
-                val p313 = parseInt(arr[313 - 136])
+        val size = parsedInts.size
+        var foundValidRotation = false
 
-                if (p189 != null && p635 != null && p236 != null && p233 != null && p325 != null && p370 != null && p446 != null && p489 != null && p349 != null && p166 != null && p313 != null) {
-                    val value = (p189.toDouble() / 1.0) * (-p635.toDouble() / 2.0) +
-                        (p236.toDouble() / 3.0) +
-                        (p233.toDouble() / 4.0) * (-p325.toDouble() / 5.0) +
-                        (p370.toDouble() / 6.0) +
-                        (-p446.toDouble() / 7.0) +
-                        (-p489.toDouble() / 8.0) * (p349.toDouble() / 9.0) +
-                        (p166.toDouble() / 10.0) * (p313.toDouble() / 11.0)
+        loop@ for (step in 0 until size) {
+            fun valueAt(index: Int): Int? = parsedInts[(index - 136 + step) % size]
 
-                    if (abs(value - 995855.0) < 0.001) {
-                        unshuffled = ArrayList(arr)
-                        break@loop
-                    }
+            val p189 = valueAt(189)
+            val p635 = valueAt(635)
+            val p236 = valueAt(236)
+            val p233 = valueAt(233)
+            val p325 = valueAt(325)
+            val p370 = valueAt(370)
+            val p446 = valueAt(446)
+            val p489 = valueAt(489)
+            val p349 = valueAt(349)
+            val p166 = valueAt(166)
+            val p313 = valueAt(313)
+
+            if (p189 != null && p635 != null && p236 != null && p233 != null && p325 != null && p370 != null && p446 != null && p489 != null && p349 != null && p166 != null && p313 != null) {
+                val value = (p189.toDouble() / 1.0) * (-p635.toDouble() / 2.0) +
+                    (p236.toDouble() / 3.0) +
+                    (p233.toDouble() / 4.0) * (-p325.toDouble() / 5.0) +
+                    (p370.toDouble() / 6.0) +
+                    (-p446.toDouble() / 7.0) +
+                    (-p489.toDouble() / 8.0) * (p349.toDouble() / 9.0) +
+                    (p166.toDouble() / 10.0) * (p313.toDouble() / 11.0)
+
+                if (abs(value - 995855.0) < 0.001) {
+                    foundValidRotation = true
+                    break@loop
                 }
             }
-
-            // Shift array left
-            val first = arr.removeAt(0)
-            arr.add(first)
         }
 
-        if (unshuffled == null) return emptyList()
+        if (!foundValidRotation) return emptyList()
 
         val keyBytes = "kiemtienmua911ca".toByteArray()
         val ivBytes = "1234567890oiuytr".toByteArray()
