@@ -31,7 +31,7 @@ jobs:
 
       - name: Build Jable extension
         run: |
-          ./gradlew :src-all-jable:assembleDebug
+          ./gradlew :src:all:jable:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
