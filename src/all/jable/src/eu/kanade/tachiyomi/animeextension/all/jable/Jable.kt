@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.animeextension.all.jable
 
 import android.content.SharedPreferences
-import aniyomi.lib.cloudflareinterceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimeUpdateStrategy
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -31,10 +30,9 @@ class Jable(override val lang: String) : AnimeHttpSource() {
     private val json by injectLazy<Json>()
     private var tagsUpdated = false
 
-    private val baseClient by lazy { super.client }
-    private val cfInterceptor by lazy { CloudflareInterceptor(baseClient) }
+    private val cfInterceptor by lazy { CloudflareInterceptor(client) }
     override val client by lazy {
-        baseClient.newBuilder()
+        super.client.newBuilder()
             .addInterceptor(cfInterceptor)
             .build()
     }
