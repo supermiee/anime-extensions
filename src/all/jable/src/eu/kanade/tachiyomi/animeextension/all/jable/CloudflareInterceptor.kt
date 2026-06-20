@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.animeextension.all.jable
 
 import android.webkit.CookieManager
 import okhttp3.Cookie
-import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
