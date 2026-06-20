@@ -1,8 +1,12 @@
 ext {
     extName = 'Jable'
     extClass = '.JableFactory'
-    extVersionCode = 2
+    extVersionCode = 3
     isNsfw = true
+}
+
+dependencies {
+    implementation(project(':lib:cloudflareinterceptor'))
 }
 
 apply plugin: "kei.plugins.extension.legacy"

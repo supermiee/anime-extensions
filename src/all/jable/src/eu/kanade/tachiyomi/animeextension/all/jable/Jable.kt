@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.animeextension.all.jable
 
 import android.content.SharedPreferences
+import aniyomi.lib.cloudflareinterceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimeUpdateStrategy
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -29,6 +30,16 @@ class Jable(override val lang: String) : AnimeHttpSource() {
     private val preferences by getPreferencesLazy()
     private val json by injectLazy<Json>()
     private var tagsUpdated = false
+
+    // Cloudflare 拦截器
+    private val cfInterceptor by lazy { CloudflareInterceptor(client) }
+
+    // 使用带 Cloudflare 拦截器的客户端
+    override val client by lazy {
+        super.client.newBuilder()
+            .addInterceptor(cfInterceptor)
+            .build()
+    }
 
     override fun animeDetailsRequest(anime: SAnime): Request = GET("$baseUrl${anime.url}?lang=${lang.toRequestLang()}", headers)
 
