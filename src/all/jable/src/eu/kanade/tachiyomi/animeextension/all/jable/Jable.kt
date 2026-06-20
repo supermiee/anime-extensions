@@ -30,7 +30,10 @@ class Jable(override val lang: String) : AnimeHttpSource() {
     private val json by injectLazy<Json>()
     private var tagsUpdated = false
 
-    private val interceptor = CloudflareInterceptor(network.client)
+    override fun headersBuilder() = super.headersBuilder()
+        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+
+    private val interceptor = CloudflareInterceptor()
     override val client = network.client.newBuilder()
         .addInterceptor(interceptor)
         .build()
