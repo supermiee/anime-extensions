@@ -30,12 +30,10 @@ class Jable(override val lang: String) : AnimeHttpSource() {
     private val json by injectLazy<Json>()
     private var tagsUpdated = false
 
-    private val cfInterceptor by lazy { CloudflareInterceptor(client) }
-    override val client by lazy {
-        super.client.newBuilder()
-            .addInterceptor(cfInterceptor)
-            .build()
-    }
+    private val interceptor = CloudflareInterceptor(network.client)
+    override val client = network.client.newBuilder()
+        .addInterceptor(interceptor)
+        .build()
 
     override fun animeDetailsRequest(anime: SAnime): Request = GET("$baseUrl${anime.url}?lang=${lang.toRequestLang()}", headers)
 
