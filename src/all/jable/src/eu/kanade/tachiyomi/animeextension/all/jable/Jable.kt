@@ -31,12 +31,10 @@ class Jable(override val lang: String) : AnimeHttpSource() {
     private val json by injectLazy<Json>()
     private var tagsUpdated = false
 
-    // Cloudflare 拦截器
-    private val cfInterceptor by lazy { CloudflareInterceptor(client) }
-
-    // 使用带 Cloudflare 拦截器的客户端
+    private val baseClient by lazy { super.client }
+    private val cfInterceptor by lazy { CloudflareInterceptor(baseClient) }
     override val client by lazy {
-        super.client.newBuilder()
+        baseClient.newBuilder()
             .addInterceptor(cfInterceptor)
             .build()
     }
