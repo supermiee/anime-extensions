@@ -1,8 +1,6 @@
-name: Build MissAV
+name: Build Jable
 
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -10,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    name: Build MissAV
+    name: Build Jable
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,27 +20,21 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      - name: Build MissAV
+      - name: Build Jable
         run: |
           chmod +x gradlew
-          ./gradlew :src:all:missav:assembleRelease --no-daemon
+          ./gradlew :src:all:jable:assembleRelease --no-daemon
 
       - name: Find APK
         id: apk
         run: |
-          find . -name "*.apk" -type f
-          MISSAV=$(find . -name "*missav*" -name "*.apk" -type f | head -1)
-          echo "missav=$MISSAV" >> $GITHUB_OUTPUT
+          JABLE=$(find . -name "*.apk" -path "*/jable/*" | head -1)
+          echo "jable=$JABLE" >> $GITHUB_OUTPUT
 
       - name: Release
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: missav-latest
-          name: MissAV Extension
-          body: |
-            ## MissAV Extension
-            - Uses WebView to bypass Cloudflare for video CDN
-
-            Commit: ${{ github.sha }}
-          files: ${{ steps.apk.outputs.missav }}
+          tag_name: jable-test
+          name: Jable Test
+          files: ${{ steps.apk.outputs.jable }}
