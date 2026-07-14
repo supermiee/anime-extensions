@@ -1,0 +1,50 @@
+name: Build Jable Extension
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Jable APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Jable
+        run: ./gradlew :src:all:jable:assembleRelease
+
+      - name: Find APK
+        id: apk
+        run: |
+          APK=$(find . -name "*.apk" -path "*/jable/*" | head -1)
+          echo "path=$APK" >> $GITHUB_OUTPUT
+          echo "Found: $APK"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jable-latest
+          name: Jable Extension (Auto Build)
+          body: |
+            ## Jable Extension with Cloudflare Bypass
+
+            - Auto Cloudflare challenge solving via WebView
+            - No manual WebView needed
+
+            Commit: ${{ github.sha }}
+          files: ${{ steps.apk.outputs.path }}
