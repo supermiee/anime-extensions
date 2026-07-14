@@ -46,6 +46,10 @@ class MissAV :
 
     override val supportsLatest = true
 
+    override val client = network.client.newBuilder()
+        .addInterceptor(CloudflareInterceptor())
+        .build()
+
     private var docHeaders by LazyMutable {
         newHeaders()
     }
