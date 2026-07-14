@@ -46,6 +46,10 @@ class MissAV :
 
     override val supportsLatest = true
 
+    override val client = network.client.newBuilder()
+        .addInterceptor(CloudflareInterceptor())
+        .build()
+
     private var docHeaders by LazyMutable {
         newHeaders()
     }
@@ -301,7 +305,7 @@ class MissAV :
 
         private val regexWhitespace = Regex("\\s+")
         private val regexSpecialCharacters =
-            Regex("([-.!~#$%^&*+_|/\\\\,?:;'“”‘’\"<>(){}\\[\\]。・～：—！？、―«»《》〘〙【】「」｜]|\\s-|-\\s|\\s\\.|\\.\\s)")
+            Regex("([-.!~#$%^&*+_|/\\\\,?:;'""''\"<>(){}\\[\\]。・～：—！？、―«»《》〘〙【】「」｜]|\\s-|-\\s|\\s\\.|\\.\\s)")
         private val regexNumberOnly = Regex("^\\d+$")
     }
 }
