@@ -1,4 +1,4 @@
-name: Build Jable
+name: Debug MissAV
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Jable
+    name: Debug MissAV
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,21 +20,7 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      - name: Build Jable
+      - name: Build MissAV
         run: |
           chmod +x gradlew
-          ./gradlew :src:all:jable:assembleRelease --no-daemon
-
-      - name: Find APK
-        id: apk
-        run: |
-          JABLE=$(find . -name "*.apk" -path "*/jable/*" | head -1)
-          echo "jable=$JABLE" >> $GITHUB_OUTPUT
-
-      - name: Release
-        if: success()
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: jable-test
-          name: Jable Test
-          files: ${{ steps.apk.outputs.jable }}
+          ./gradlew :src:all:missav:assembleRelease --no-daemon --stacktrace 2>&1 | tail -50
