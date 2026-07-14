@@ -24,9 +24,11 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: true
 
       - name: Build Jable
-        run: ./gradlew :src:all:jable:assembleRelease
+        run: ./gradlew :src:all:jable:assembleRelease --no-daemon
 
       - name: Find APK
         id: apk
@@ -43,7 +45,7 @@ jobs:
           body: |
             ## Jable Extension with Cloudflare Bypass
 
-            - Auto Cloudflare challenge solving via WebView
+            - Uses WebView for all requests to bypass TLS fingerprinting
             - No manual WebView needed
 
             Commit: ${{ github.sha }}
