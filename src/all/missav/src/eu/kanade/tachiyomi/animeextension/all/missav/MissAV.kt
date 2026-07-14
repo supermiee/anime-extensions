@@ -1,10 +1,11 @@
 package eu.kanade.tachiyomi.animeextension.all.missav
 
 import android.util.Log
-import androidx.preference.PreferenceScreen
+import android.preference.PreferenceScreen
 import aniyomi.lib.javcoverfetcher.JavCoverFetcher
 import aniyomi.lib.javcoverfetcher.JavCoverFetcher.fetchHDCovers
 import aniyomi.lib.playlistutils.PlaylistUtils
+import aniyomi.lib.webviewfetcher.WebViewInterceptor
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -47,7 +48,7 @@ class MissAV :
     override val supportsLatest = true
 
     override val client = network.client.newBuilder()
-        .addInterceptor(CloudflareInterceptor())
+        .addInterceptor(WebViewInterceptor())
         .build()
 
     private var docHeaders by LazyMutable {
