@@ -1,6 +1,8 @@
 name: Build MissAV
 
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -23,4 +25,24 @@ jobs:
       - name: Build MissAV
         run: |
           chmod +x gradlew
-          ./gradlew :src:all:missav:assembleRelease --no-daemon --info 2>&1 | tail -200
+          ./gradlew :src:all:missav:assembleRelease --no-daemon
+
+      - name: Find APK
+        id: apk
+        run: |
+          find . -name "*.apk" -type f
+          MISSAV=$(find . -name "*missav*" -name "*.apk" -type f | head -1)
+          echo "missav=$MISSAV" >> $GITHUB_OUTPUT
+
+      - name: Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: missav-latest
+          name: MissAV Extension
+          body: |
+            ## MissAV Extension
+            - Uses WebView to bypass Cloudflare for video CDN
+
+            Commit: ${{ github.sha }}
+          files: ${{ steps.apk.outputs.missav }}
