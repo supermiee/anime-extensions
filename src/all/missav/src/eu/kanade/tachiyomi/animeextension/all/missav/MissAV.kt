@@ -4,10 +4,10 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.os.Handler
 import android.os.Looper
-import android.preference.PreferenceScreen
 import android.util.Log
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.preference.PreferenceScreen
 import aniyomi.lib.javcoverfetcher.JavCoverFetcher
 import aniyomi.lib.javcoverfetcher.JavCoverFetcher.fetchHDCovers
 import aniyomi.lib.playlistutils.PlaylistUtils
