@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.animeextension.all.jable
 
 import android.content.SharedPreferences
-import aniyomi.lib.cloudflareinterceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimeUpdateStrategy
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -32,7 +31,7 @@ class Jable(override val lang: String) : AnimeHttpSource() {
     private var tagsUpdated = false
 
     override val client = network.client.newBuilder()
-        .addInterceptor(CloudflareInterceptor(network.client))
+        .addInterceptor(CloudflareInterceptor())
         .build()
 
     override fun animeDetailsRequest(anime: SAnime): Request = GET("$baseUrl${anime.url}?lang=${lang.toRequestLang()}", headers)
