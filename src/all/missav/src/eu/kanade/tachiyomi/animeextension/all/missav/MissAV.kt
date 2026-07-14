@@ -1,11 +1,16 @@
 package eu.kanade.tachiyomi.animeextension.all.missav
 
+import android.annotation.SuppressLint
+import android.app.Application
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import android.preference.PreferenceScreen
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.preference.PreferenceScreen
 import aniyomi.lib.javcoverfetcher.JavCoverFetcher
 import aniyomi.lib.javcoverfetcher.JavCoverFetcher.fetchHDCovers
 import aniyomi.lib.playlistutils.PlaylistUtils
-import aniyomi.lib.webviewfetcher.WebViewInterceptor
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -25,12 +30,19 @@ import keiyoushi.utils.parseAs
 import keiyoushi.utils.toJsonRequestBody
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.jsoup.nodes.Element
+import uy.kohesive.injekt.injectLazy
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class MissAV :
     AnimeHttpSource(),
@@ -48,7 +60,7 @@ class MissAV :
     override val supportsLatest = true
 
     override val client = network.client.newBuilder()
-        .addInterceptor(WebViewInterceptor())
+        .addInterceptor(CloudflareInterceptor())
         .build()
 
     private var docHeaders by LazyMutable {
@@ -308,5 +320,56 @@ class MissAV :
         private val regexSpecialCharacters =
             Regex("([-.!~#$%^&*+_|/\\\\,?:;'""''\"<>(){}\\[\\]。・～：—！？、―«»《》〘〙【】「」｜]|\\s-|-\\s|\\s\\.|\\.\\s)")
         private val regexNumberOnly = Regex("^\\d+$")
+    }
+}
+
+class CloudflareInterceptor : Interceptor {
+    private val application: Application by injectLazy()
+    private val handler = Handler(Looper.getMainLooper())
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        val response = chain.proceed(request)
+        if (response.code != 403) return response
+        response.close()
+
+        val html = fetchWithWebView(request.url.toString())
+            ?: throw Exception("Failed to load page via WebView")
+
+        return Response.Builder()
+            .request(request)
+            .protocol(Protocol.HTTP_2)
+            .code(200)
+            .message("OK")
+            .header("Content-Type", "text/html; charset=utf-8")
+            .body(html.toResponseBody("text/html; charset=utf-8".toMediaType()))
+            .build()
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun fetchWithWebView(url: String): String? {
+        val latch = CountDownLatch(1)
+        var result: String? = null
+        handler.post {
+            try {
+                val webView = WebView(application)
+                webView.settings.javaScriptEnabled = true
+                webView.settings.domStorageEnabled = true
+                webView.webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, pageUrl: String?) {
+                        handler.postDelayed({
+                            view?.evaluateJavascript("document.documentElement.outerHTML") { html ->
+                                result = html?.removeSurrounding("\"")
+                                latch.countDown()
+                                view.destroy()
+                            }
+                        }, 2000)
+                    }
+                }
+                webView.loadUrl(url)
+            } catch (e: Exception) { latch.countDown() }
+        }
+        latch.await(20, TimeUnit.SECONDS)
+        return result
     }
 }
