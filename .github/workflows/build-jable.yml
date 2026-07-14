@@ -23,16 +23,18 @@ jobs:
       - name: Build MissAV
         run: |
           chmod +x gradlew
-          ./gradlew :src:all:missav:assembleRelease --no-daemon --stacktrace 2>&1 | tail -100
+          ./gradlew :src:all:missav:assembleRelease --no-daemon
 
       - name: Find APK
         id: apk
         run: |
-          MISSAV=$(find . -name "*missav*" -name "*.apk" -type f | head -1)
+          find . -name "*.apk" -type f
+          MISSAV=$(find . -name "*.apk" -type f | head -1)
           echo "missav=$MISSAV" >> $GITHUB_OUTPUT
+          echo "Found: $MISSAV"
 
       - name: Release
-        if: success()
+        if: success() && steps.apk.outputs.missav != ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: missav-latest
