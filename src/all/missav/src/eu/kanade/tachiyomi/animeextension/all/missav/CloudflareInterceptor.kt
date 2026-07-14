@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 class CloudflareInterceptor : Interceptor {
 
     private val application: Application by injectLazy()
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
@@ -47,17 +48,26 @@ class CloudflareInterceptor : Interceptor {
         val latch = CountDownLatch(1)
         var result: String? = null
 
-        Handler(Looper.getMainLooper()).post {
+        handler.post {
             try {
                 val webView = WebView(application)
                 webView.settings.javaScriptEnabled = true
                 webView.settings.domStorageEnabled = true
+                webView.settings.userAgentString = USER_AGENT
 
                 webView.webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, pageUrl: String?) {
-                        Handler(Looper.getMainLooper()).postDelayed({
+                        handler.postDelayed({
                             view?.evaluateJavascript("document.documentElement.outerHTML") { html ->
-                                result = html?.removeSurrounding("\"")
+                                result = html
+                                    ?.removeSurrounding("\"")
+                                    ?.replace("\\u003C", "<")
+                                    ?.replace("\\u003E", ">")
+                                    ?.replace("\\u0026", "&")
+                                    ?.replace("\\n", "\n")
+                                    ?.replace("\\t", "\t")
+                                    ?.replace("\\\"", "\"")
+                                    ?.replace("\\\\", "\\")
                                 latch.countDown()
                                 view.destroy()
                             }
@@ -72,5 +82,9 @@ class CloudflareInterceptor : Interceptor {
 
         latch.await(20, TimeUnit.SECONDS)
         return result
+    }
+
+    companion object {
+        private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     }
 }
