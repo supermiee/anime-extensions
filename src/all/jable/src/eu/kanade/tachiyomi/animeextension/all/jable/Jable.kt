@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.animeextension.all.jable
 
 import android.content.SharedPreferences
+import aniyomi.lib.cloudflareinterceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimeUpdateStrategy
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -30,12 +31,8 @@ class Jable(override val lang: String) : AnimeHttpSource() {
     private val json by injectLazy<Json>()
     private var tagsUpdated = false
 
-    override fun headersBuilder() = super.headersBuilder()
-        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
-
-    private val interceptor = CloudflareInterceptor()
     override val client = network.client.newBuilder()
-        .addInterceptor(interceptor)
+        .addInterceptor(CloudflareInterceptor(network.client))
         .build()
 
     override fun animeDetailsRequest(anime: SAnime): Request = GET("$baseUrl${anime.url}?lang=${lang.toRequestLang()}", headers)
@@ -123,7 +120,6 @@ class Jable(override val lang: String) : AnimeHttpSource() {
             .addPathSegments("$path/")
             .addQueryParameter("lang", lang.toRequestLang())
         if (tagsUpdated) {
-            // load whole page for update filter tags info
             urlBuilder.addQueryParameter("mode", "async")
         }
         filters.list.forEach {
@@ -132,13 +128,11 @@ class Jable(override val lang: String) : AnimeHttpSource() {
                     urlBuilder.addQueryParameter("function", it.selected.functionName)
                         .addQueryParameter("block_id", it.selected.blockId)
                 }
-
                 is SortFilter -> {
                     if (it.selected.second.isNotEmpty()) {
                         urlBuilder.addQueryParameter("sort_by", it.selected.second)
                     }
                 }
-
                 else -> {}
             }
         }
