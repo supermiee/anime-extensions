@@ -300,8 +300,9 @@ class MissAV :
         private const val PREF_UUID_KEY = "missav_uuid"
 
         private val regexWhitespace = Regex("\\s+")
+        @Suppress("ktlint:standard:string-template")
         private val regexSpecialCharacters =
-            Regex("([-.!~#$%^&*+_|/\\\\,?:;'""''\"<>(){}\\[\\]。・～：—！？、―«»《》〘〙【】「」｜]|\\s-|-\\s|\\s\\.|\\.\\s)")
+            Regex("([-.!~#\$%^&*+_|/\\\\,?:;'\u201c\u201d\u2018\u2019\"<>(){}\\[\\]\u3002\u30fb\uff5e\uff1a\u2014\uff01\uff1f\u3001\u00ab\u00bb\u300a\u300b\u301c\u301d\u301e\u3010\u3011\u300c\u300d\uff5c]|\\s-|-\\s|\\s\\.|\\.\\s)")
         private val regexNumberOnly = Regex("^\\d+$")
     }
 }
