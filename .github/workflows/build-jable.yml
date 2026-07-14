@@ -1,4 +1,4 @@
-name: Build Extensions
+name: Build MissAV
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build APKs
+    name: Build MissAV
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,27 +22,27 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      - name: Build Jable
+      - name: Build MissAV
         run: |
           chmod +x gradlew
-          ./gradlew :src:all:jable:assembleRelease --no-daemon --stacktrace
+          ./gradlew :src:all:missav:assembleRelease --no-daemon --stacktrace 2>&1 | tail -100
 
       - name: Find APK
         id: apk
         run: |
-          JABLE=$(find . -name "*.apk" -path "*/jable/*" | head -1)
-          echo "jable=$JABLE" >> $GITHUB_OUTPUT
-          echo "Jable: $JABLE"
+          MISSAV=$(find . -name "*.apk" -path "*/missav/*" | head -1)
+          echo "missav=$MISSAV" >> $GITHUB_OUTPUT
+          echo "MissAV: $MISSAV"
 
       - name: Release
         if: success()
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Extensions (Auto Build)
+          tag_name: missav-latest
+          name: MissAV Extension
           body: |
-            ## Jable Extension
-            - Uses WebView to bypass Cloudflare TLS fingerprinting
+            ## MissAV Extension
+            - Uses WebView to bypass Cloudflare for video CDN
 
             Commit: ${{ github.sha }}
-          files: ${{ steps.apk.outputs.jable }}
+          files: ${{ steps.apk.outputs.missav }}
