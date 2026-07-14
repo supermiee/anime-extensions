@@ -25,20 +25,14 @@ jobs:
       - name: Build Jable
         run: |
           chmod +x gradlew
-          ./gradlew :src:all:jable:assembleRelease --no-daemon
+          ./gradlew :src:all:jable:assembleRelease --no-daemon --stacktrace
 
-      - name: Build MissAV
-        run: ./gradlew :src:all:missav:assembleRelease --no-daemon
-
-      - name: Find APKs
+      - name: Find APK
         id: apk
         run: |
           JABLE=$(find . -name "*.apk" -path "*/jable/*" | head -1)
-          MISSAV=$(find . -name "*.apk" -path "*/missav/*" | head -1)
           echo "jable=$JABLE" >> $GITHUB_OUTPUT
-          echo "missav=$MISSAV" >> $GITHUB_OUTPUT
           echo "Jable: $JABLE"
-          echo "MissAV: $MISSAV"
 
       - name: Release
         if: success()
@@ -50,10 +44,5 @@ jobs:
             ## Jable Extension
             - Uses WebView to bypass Cloudflare TLS fingerprinting
 
-            ## MissAV Extension
-            - Uses WebView to bypass Cloudflare for video CDN
-
             Commit: ${{ github.sha }}
-          files: |
-            ${{ steps.apk.outputs.jable }}
-            ${{ steps.apk.outputs.missav }}
+          files: ${{ steps.apk.outputs.jable }}
