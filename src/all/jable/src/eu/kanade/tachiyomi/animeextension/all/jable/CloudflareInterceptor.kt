@@ -1,65 +1,100 @@
 package eu.kanade.tachiyomi.animeextension.all.jable
 
-import android.webkit.CookieManager
-import okhttp3.Cookie
+import android.annotation.SuppressLint
+import android.os.Handler
+import android.os.Looper
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import keiyoushi.utils.applicationContext
 import okhttp3.Interceptor
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Protocol
+import okhttp3.Request
 import okhttp3.Response
-import java.io.IOException
+import okhttp3.ResponseBody.Companion.toResponseBody
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class CloudflareInterceptor : Interceptor {
 
-    companion object {
-        private val ERROR_CODES = listOf(403, 503)
-        private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
-    }
-
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
-        val response = chain.proceed(originalRequest)
+        val result = loadWithWebView(originalRequest)
 
-        // Not blocked, return as-is
-        if (response.code !in ERROR_CODES) {
-            return response
+        if (result != null) {
+            return Response.Builder()
+                .request(originalRequest)
+                .protocol(Protocol.HTTP_2)
+                .code(200)
+                .message("OK")
+                .header("Content-Type", "text/html; charset=utf-8")
+                .body(result.toResponseBody("text/html; charset=utf-8".toMediaType()))
+                .build()
         }
 
-        // Check if it's Cloudflare
-        val isCloudflare = response.header("Server") in SERVER_CHECK ||
-            response.header("cf-ray") != null ||
-            response.header("cf-mitigated") != null
+        return chain.proceed(originalRequest)
+    }
 
-        if (!isCloudflare) {
-            return response
-        }
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun loadWithWebView(request: Request): String? {
+        val latch = CountDownLatch(1)
+        var result: String? = null
+        var webView: WebView? = null
 
-        response.close()
+        Handler(Looper.getMainLooper()).post {
+            try {
+                webView = WebView(applicationContext).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.databaseEnabled = true
+                    settings.userAgentString = request.header("User-Agent")
+                        ?: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+                }
 
-        // Try to get existing cookies from manual WebView verification
-        val cookies = CookieManager.getInstance()
-            ?.getCookie(originalRequest.url.toString())
+                webView!!.webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        view?.evaluateJavascript(
+                            "(function() { return document.documentElement.outerHTML; })();"
+                        ) { html ->
+                            result = html
+                            latch.countDown()
+                        }
+                    }
+                }
 
-        if (!cookies.isNullOrEmpty() && cookies.contains("cf_clearance")) {
-            val cookieList = cookies.split(";")
-                .mapNotNull { Cookie.parse(originalRequest.url, it.trim()) }
-            val cookieHeader = cookieList.joinToString("; ") { "${it.name}=${it.value}" }
-
-            // Retry with cookies
-            val retryResponse = chain.proceed(
-                originalRequest.newBuilder()
-                    .header("Cookie", cookieHeader)
-                    .build(),
-            )
-            if (retryResponse.code !in ERROR_CODES) {
-                return retryResponse
+                webView!!.loadUrl(request.url.toString())
+            } catch (e: Exception) {
+                latch.countDown()
             }
-            retryResponse.close()
         }
 
-        // No valid cookies - user must verify manually
-        throw IOException(
-            "需要 Cloudflare 验证。请按以下步骤操作：\n" +
-                "1. 点击右上角 WebView 图标（地球图标）\n" +
-                "2. 在打开的页面中完成验证\n" +
-                "3. 关闭 WebView 后重试",
-        )
+        try {
+            latch.await(15, TimeUnit.SECONDS)
+        } finally {
+            Handler(Looper.getMainLooper()).post {
+                try {
+                    webView?.stopLoading()
+                    webView?.destroy()
+                } catch (_: Exception) {}
+            }
+        }
+
+        return result?.let { cleanHtml(it) }
+    }
+
+    private fun cleanHtml(html: String): String {
+        var cleaned = html
+        if (cleaned.startsWith("\"") && cleaned.endsWith("\"")) {
+            cleaned = cleaned.substring(1, cleaned.length - 1)
+        }
+        cleaned = cleaned
+            .replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+            .replace("\\u003C", "<")
+            .replace("\\u003E", ">")
+            .replace("\\u0026", "&")
+        return cleaned
     }
 }
