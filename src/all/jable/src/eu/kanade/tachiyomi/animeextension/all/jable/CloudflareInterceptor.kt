@@ -17,11 +17,12 @@ class CloudflareInterceptor : Interceptor {
         val originalRequest = chain.request()
         val response = chain.proceed(originalRequest)
 
-        // Check if blocked by Cloudflare
+        // Not blocked, return as-is
         if (response.code !in ERROR_CODES) {
             return response
         }
 
+        // Check if it's Cloudflare
         val isCloudflare = response.header("Server") in SERVER_CHECK ||
             response.header("cf-ray") != null ||
             response.header("cf-mitigated") != null
@@ -32,7 +33,7 @@ class CloudflareInterceptor : Interceptor {
 
         response.close()
 
-        // Try to get existing cookies from WebView's CookieManager
+        // Try to get existing cookies from manual WebView verification
         val cookies = CookieManager.getInstance()
             ?.getCookie(originalRequest.url.toString())
 
@@ -41,6 +42,7 @@ class CloudflareInterceptor : Interceptor {
                 .mapNotNull { Cookie.parse(originalRequest.url, it.trim()) }
             val cookieHeader = cookieList.joinToString("; ") { "${it.name}=${it.value}" }
 
+            // Retry with cookies
             val retryResponse = chain.proceed(
                 originalRequest.newBuilder()
                     .header("Cookie", cookieHeader)
@@ -52,26 +54,12 @@ class CloudflareInterceptor : Interceptor {
             retryResponse.close()
         }
 
-        // Cookies missing or stale - use WebView to solve challenge automatically
-        val bypass = CloudflareBypass()
-        val bypassResult = bypass.getCookies(originalRequest.url.toString())
-
-        if (bypassResult != null) {
-            return chain.proceed(
-                originalRequest.newBuilder()
-                    .header("Cookie", bypassResult.cookies)
-                    .header("User-Agent", bypassResult.userAgent)
-                    .build(),
-            )
-        }
-
-        // All attempts failed
+        // No valid cookies - user must verify manually
         throw IOException(
-            "Cloudflare verification failed. Please:\n" +
-                "1. Open Jable source in Aniyomi\n" +
-                "2. Tap the WebView icon (globe icon) in the top right\n" +
-                "3. Complete Cloudflare verification in WebView\n" +
-                "4. Close WebView and try again",
+            "需要 Cloudflare 验证。请按以下步骤操作：\n" +
+                "1. 点击右上角 WebView 图标（地球图标）\n" +
+                "2. 在打开的页面中完成验证\n" +
+                "3. 关闭 WebView 后重试",
         )
     }
 }
