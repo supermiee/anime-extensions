@@ -23,7 +23,7 @@ jobs:
       - name: Build MissAV
         run: |
           chmod +x gradlew
-          ./gradlew :src:all:missav:assembleRelease --no-daemon --stacktrace
+          ./gradlew :src:all:missav:assembleRelease --no-daemon --stacktrace 2>&1 | tail -100
 
       - name: Find APK
         id: apk
